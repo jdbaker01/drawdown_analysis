@@ -190,18 +190,16 @@ def analyze_symbol(symbol, symbol_df, output_dir):
     # --- Get current drawdown ---
     current_drawdown = drawdown_series.iloc[-1]
 
-    # Find the date of the maximum drawdown (the trough)
-    trough_date = drawdown_series.idxmin()
-    # Find the price at that trough
-    trough_value = prices[trough_date]
-
-    # Find the date of the peak *before* the trough
-    peak_date = prices.loc[:trough_date].idxmax()
-    # Find the price at that peak
-    peak_value = prices[peak_date]
-
-    # Calculate the max drawdown as a percentage
-    max_drawdown = (trough_value - peak_value) / peak_value
+    # Find the highest price (peak) in the entire series
+    peak_date = prices.idxmax()
+    peak_value = prices.max()
+    
+    # Find the lowest price (trough) in the entire series
+    trough_date = prices.idxmin()
+    trough_value = prices.min()
+    
+    # Calculate the max drawdown as the worst drawdown in the series
+    max_drawdown = drawdown_series.min()
 
     # Add Max Drawdown section to HTML report
     print("Adding Max Drawdown to report...")
