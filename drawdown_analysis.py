@@ -114,8 +114,8 @@ def analyze_symbol(symbol, symbol_df, output_dir):
     <body>
         <h1>Drawdown Analysis Report for {symbol}</h1>
         <div class="summary">
-            <p><strong>Analysis Date:</strong> {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-            <p><strong>Data Period:</strong> {symbol_df['Date'].min().strftime('%Y-%m-%d')} to {symbol_df['Date'].max().strftime('%Y-%m-%d')}</p>
+            <p><strong>Analysis Date:</strong> {pd.Timestamp.now().strftime('%m/%d/%Y')}</p>
+            <p><strong>Data Period:</strong> {symbol_df['Date'].min().strftime('%m/%d/%Y')} to {symbol_df['Date'].max().strftime('%m/%d/%Y')}</p>
             <p><strong>Total Records:</strong> {len(symbol_df)}</p>
         </div>
     """
@@ -211,9 +211,9 @@ def analyze_symbol(symbol, symbol_df, output_dir):
         "Metric": ["Max Drawdown", "Peak Date", "Peak Price", "Trough Date", "Trough Price", "Current DD"],
         "Value": [
             f"{max_drawdown:.4%}",
-            peak_date.strftime('%Y-%m-%d'),
+            peak_date.strftime('%m/%d/%Y'),
             f"{peak_value:.2f}",
-            trough_date.strftime('%Y-%m-%d'),
+            trough_date.strftime('%m/%d/%Y'),
             f"{trough_value:.2f}",
             f"{current_drawdown:.4%}"
         ]
