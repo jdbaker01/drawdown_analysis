@@ -4,9 +4,85 @@ import numpy as np
 import os
 import re
 import argparse
+import glob
 
 
-# --- 1. Analysis Functions ---
+# --- 1. Helper Functions ---
+
+def find_latest_csv_for_symbol(symbol):
+    """
+    Find the latest CSV file for a given symbol in the data folder.
+    
+    Args:
+        symbol (str): Stock symbol to search for
+        
+    Returns:
+        str: Path to the latest CSV file, or None if not found
+    """
+    # Convert symbol to uppercase for consistency
+    symbol = symbol.upper()
+    
+    # Search for CSV files matching the symbol pattern
+    pattern = os.path.join('data', f'{symbol}-*.csv')
+    matching_files = glob.glob(pattern)
+    
+    if not matching_files:
+        return None
+    
+    # Sort by modification time (most recent first)
+    matching_files.sort(key=os.path.getmtime, reverse=True)
+    
+    return matching_files[0]
+
+
+def resolve_input_file(input_arg):
+    """
+    Resolve the input argument to a CSV file path.
+    Can handle either a symbol or a full file path.
+    
+    Args:
+        input_arg (str): Either a stock symbol or a file path
+        
+    Returns:
+        str: Resolved file path
+        
+    Raises:
+        FileNotFoundError: If no suitable file is found
+    """
+    # Check if it's already a valid file path
+    if os.path.isfile(input_arg):
+        return input_arg
+    
+    # Check if it's a file path without extension
+    if input_arg.endswith('.csv') and os.path.isfile(input_arg):
+        return input_arg
+    
+    # Treat as symbol and search for latest CSV
+    latest_file = find_latest_csv_for_symbol(input_arg)
+    
+    if latest_file:
+        print(f"Found latest file for {input_arg.upper()}: {latest_file}")
+        return latest_file
+    else:
+        # Provide helpful error message
+        available_symbols = []
+        for csv_file in glob.glob('data/*.csv'):
+            filename = os.path.basename(csv_file)
+            if '-' in filename:
+                symbol = filename.split('-')[0]
+                if symbol not in available_symbols:
+                    available_symbols.append(symbol)
+        
+        error_msg = f"No CSV file found for symbol '{input_arg.upper()}'"
+        if available_symbols:
+            error_msg += f"\nAvailable symbols in data folder: {', '.join(sorted(available_symbols))}"
+        else:
+            error_msg += "\nNo CSV files found in data folder. Use download_stock_data.py to download data first."
+        
+        raise FileNotFoundError(error_msg)
+
+
+# --- 2. Analysis Functions ---
 
 def analyze_symbol(symbol, symbol_df, output_dir):
     """
@@ -272,17 +348,47 @@ def analyze_symbol(symbol, symbol_df, output_dir):
     }
     summary_df = pd.DataFrame(summary_data).set_index("Metric")
     
-    # Create full describe() table
-    describe_df = drawdown_table.describe().to_frame()
-    describe_df.index.name = "Statistic"
-    describe_df.columns = ["Value"]
+    # Create enhanced statistics table with additional percentiles
+    # Convert to positive percentages for better interpretation
+    drawdown_table_positive = drawdown_table.abs() * 100  # Convert to positive percentages
+    
+    # Calculate standard describe() statistics
+    describe_stats = drawdown_table_positive.describe()
+    
+    # Calculate additional percentiles
+    p10 = drawdown_table_positive.quantile(0.10)
+    p90 = drawdown_table_positive.quantile(0.90)
+    
+    # Create enhanced statistics dictionary
+    enhanced_stats = {
+        'count': describe_stats['count'],
+        'mean': describe_stats['mean'],
+        'std': describe_stats['std'],
+        'min': describe_stats['min'],
+        '10%': p10,
+        '25%': describe_stats['25%'],
+        '50%': describe_stats['50%'],
+        '75%': describe_stats['75%'],
+        '90%': p90,
+        'max': describe_stats['max']
+    }
+    
+    # Create DataFrame with enhanced statistics
+    describe_df = pd.DataFrame(list(enhanced_stats.items()), columns=['Statistic', 'Value (%)'])
+    describe_df = describe_df.set_index('Statistic')
+    
+    # Format the values as percentages (except count)
+    describe_df['Value (%)'] = describe_df['Value (%)'].apply(
+        lambda x: f"{int(x)}" if describe_df.index[describe_df['Value (%)'] == x].tolist()[0] == 'count' 
+        else f"{x:.2f}%"
+    )
     
     html_content += f"""
         <h2>Local Drawdowns Summary</h2>
         {summary_df.to_html(table_id='local_drawdowns_summary', escape=False)}
         
         <h2>Local Drawdowns Statistics</h2>
-        {describe_df.to_html(table_id='local_drawdowns_stats', escape=False, float_format='{:.4f}'.format)}
+        {describe_df.to_html(table_id='local_drawdowns_stats', escape=False)}
     """
 
     # Graph: Plot Histogram of Local Drawdowns
@@ -407,8 +513,8 @@ def analyze_symbol(symbol, symbol_df, output_dir):
             drawdown_periods.loc[period_mask] = period_number
             period_number += 1
     
-    # Add the drawdown period column
-    cumulative_return_df['Draw Period #'] = drawdown_periods
+    # Add the drawdown period column, replacing NaN with empty strings
+    cumulative_return_df['Draw Period #'] = drawdown_periods.fillna('')
     
     html_content += f"""
         {cumulative_return_df.to_html(table_id='cumulative_return', escape=False)}
@@ -430,8 +536,15 @@ def analyze_symbol(symbol, symbol_df, output_dir):
 
 def main():
     # --- Command Line Arguments ---
-    parser = argparse.ArgumentParser(description='Perform drawdown analysis on stock data')
-    parser.add_argument('filename', help='Path to the CSV file containing stock data')
+    parser = argparse.ArgumentParser(
+        description='Perform drawdown analysis on stock data',
+        epilog='Examples:\n'
+               '  python drawdown_analysis.py AAPL\n'
+               '  python drawdown_analysis.py data/AAPL-2020-11-08-2025-11-07.csv\n'
+               '  python drawdown_analysis.py MSFT --output-dir results',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument('input', help='Stock symbol (e.g., AAPL) or path to CSV file')
     parser.add_argument('--output-dir', '-o', default='output', 
                        help='Output directory for results (default: output)')
     
@@ -439,7 +552,13 @@ def main():
     
     # --- Define Output Directory ---
     OUTPUT_DIR = args.output_dir
-    data_file = args.filename
+    
+    # --- Resolve Input File ---
+    try:
+        data_file = resolve_input_file(args.input)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
 
     # --- Data Loading ---
     try:
