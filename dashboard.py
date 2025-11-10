@@ -28,10 +28,10 @@ def main():
     <style>
     /* Target only the main Analyze form submit button */
     div[data-testid="stFormSubmitButton"] button[type="submit"] {
-        background-color: #87CEEB !important;
-        border-color: #87CEEB !important;
-        color: white !important;
-        border-radius: 0.5rem !important;
+        background-color: blue;
+        border-color: blue;
+        color: white;
+        border-radius: 0.5rem;
     }
     
     div[data-testid="stFormSubmitButton"] button[type="submit"]:hover {
@@ -334,7 +334,7 @@ def render_header():
     # Center the title using columns
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<h1 style='text-align: center;'>📈 Stock Drawdown Dashboard</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center;'>Stock Drawdown Dashboard</h1>", unsafe_allow_html=True)
 
 
 def render_input_section():
@@ -519,7 +519,6 @@ def render_results_section():
         if st.session_state.analysis_history:
             st.divider()
             st.subheader("📚 Previous Analysis Results")
-            render_analysis_navigation()
             render_analysis_results()
     
     elif st.session_state.processing_status == 'complete':
@@ -528,7 +527,6 @@ def render_results_section():
         # Show results if available
         if st.session_state.analysis_history:
             st.divider()
-            render_analysis_navigation()
             render_analysis_results()
     
     elif st.session_state.processing_status == 'error':
@@ -538,44 +536,11 @@ def render_results_section():
         if st.session_state.analysis_history:
             st.divider()
             st.subheader("📚 Previous Analysis Results")
-            render_analysis_navigation()
             render_analysis_results()
     
     elif st.session_state.analysis_history:
-        render_analysis_navigation()
         render_analysis_results()
 
-
-def render_analysis_navigation():
-    """Render navigation controls for multiple analyses."""
-    if len(st.session_state.analysis_history) <= 1:
-        return
-    
-    st.subheader("📊 Analysis Results")
-    
-    # Create tabs for different analyses
-    tab_labels = []
-    for i, analysis in enumerate(st.session_state.analysis_history):
-        symbol = analysis.get('symbol', f'Analysis {i+1}')
-        analysis_date = analysis.get('analysis_date')
-        
-        if analysis_date and hasattr(analysis_date, 'strftime'):
-            date_str = analysis_date.strftime('%m/%d %H:%M')
-        else:
-            date_str = f"#{i+1}"
-        
-        tab_labels.append(f"{symbol} ({date_str})")
-    
-    # Create tabs
-    tabs = st.tabs(tab_labels)
-    
-    # Store the selected tab index
-    for i, tab in enumerate(tabs):
-        with tab:
-            st.session_state.selected_analysis_index = i
-            break  # Only process the active tab
-    
-    return tabs
 
 
 def render_analysis_results():
@@ -584,46 +549,20 @@ def render_analysis_results():
         st.info("💡 No analysis results available yet.")
         return
     
-    # Handle single vs multiple analyses
-    if len(st.session_state.analysis_history) == 1:
-        # Single analysis - display directly
-        try:
-            from results_display import render_analysis_results as display_results
-            display_results(st.session_state.analysis_history[0])
-        except ImportError as e:
-            st.error(f"❌ Results display module not available: {e}")
-            render_fallback_results(st.session_state.analysis_history[0])
-        except Exception as e:
-            st.error(f"❌ Error displaying results: {e}")
-            render_fallback_results(st.session_state.analysis_history[0])
-    
-    else:
-        # Multiple analyses - use tabs
-        tab_labels = []
-        for i, analysis in enumerate(st.session_state.analysis_history):
-            symbol = analysis.get('symbol', f'Analysis {i+1}')
-            analysis_date = analysis.get('analysis_date')
-            
-            if analysis_date and hasattr(analysis_date, 'strftime'):
-                date_str = analysis_date.strftime('%m/%d %H:%M')
-            else:
-                date_str = f"#{i+1}"
-            
-            tab_labels.append(f"{symbol} ({date_str})")
-        
-        tabs = st.tabs(tab_labels)
-        
-        for i, (tab, analysis) in enumerate(zip(tabs, st.session_state.analysis_history)):
-            with tab:
-                try:
-                    from results_display import render_analysis_results as display_results
-                    display_results(analysis)
-                except ImportError as e:
-                    st.error(f"❌ Results display module not available: {e}")
-                    render_fallback_results(analysis)
-                except Exception as e:
-                    st.error(f"❌ Error displaying results: {e}")
-                    render_fallback_results(analysis)
+    # Let results_display.py handle all the tab creation and navigation
+    try:
+        from results_display import render_multiple_analysis_results
+        render_multiple_analysis_results(st.session_state.analysis_history)
+    except ImportError as e:
+        st.error(f"❌ Results display module not available: {e}")
+        # Fallback to basic display
+        for i, result in enumerate(st.session_state.analysis_history):
+            render_fallback_results(result)
+    except Exception as e:
+        st.error(f"❌ Error displaying results: {e}")
+        # Fallback to basic display
+        for i, result in enumerate(st.session_state.analysis_history):
+            render_fallback_results(result)
 
 
 def render_fallback_results(analysis_result: dict):
