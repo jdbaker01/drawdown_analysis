@@ -79,7 +79,7 @@ def render_all_charts(analysis_results: Dict[str, Any]) -> None:
         st.error("❌ No analysis results available for charts")
         return
     
-    st.header("📊 Visualizations")
+    st.header("Visualizations")
     
     create_matplotlib_fallback_charts(analysis_results)
 
@@ -126,7 +126,7 @@ def render_cumulative_return_matplotlib(analysis_results: Dict[str, Any]) -> Non
         st.error("❌ No cumulative return data available for chart")
         return
     
-    st.subheader(f"📈 Cumulative Return - {symbol}")
+    st.subheader(f"Cumulative Return - {symbol}")
     
     # Display the chart
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -211,7 +211,7 @@ def render_drawdown_series_matplotlib(analysis_results: Dict[str, Any]) -> None:
         st.error("❌ No drawdown series data available for chart")
         return
     
-    st.subheader(f"📉 Drawdown Series - {symbol}")
+    st.subheader(f"Drawdown Series - {symbol}")
     
     fig, ax = plt.subplots(figsize=(8, 6))
     try:
@@ -236,7 +236,7 @@ def render_drawdown_series_matplotlib(analysis_results: Dict[str, Any]) -> None:
         plt.close(fig)
     
     # Display comprehensive drawdown statistics
-    st.subheader("📊 Drawdown Statistics")
+    st.subheader("Drawdown Statistics")
     
     # Core metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -331,7 +331,7 @@ def render_local_drawdowns_histogram_matplotlib(analysis_results: Dict[str, Any]
         st.warning("⚠️ No local drawdown events found for histogram")
         return
     
-    st.subheader(f"📊 Local Drawdowns Distribution - {symbol}")
+    st.subheader(f"Local Drawdowns Distribution - {symbol}")
     
     # Convert to positive percentages for better visualization
     drawdown_pct = [abs(dd) * 100 for dd in local_drawdowns_list]
@@ -358,7 +358,7 @@ def render_local_drawdowns_histogram_matplotlib(analysis_results: Dict[str, Any]
         plt.close(fig)
     
     # Display comprehensive distribution statistics
-    st.subheader("📊 Distribution Statistics")
+    st.subheader("Distribution Statistics")
     
     # Basic statistics
     col1, col2, col3, col4 = st.columns(4)
@@ -441,26 +441,39 @@ def render_duration_by_magnitude_matplotlib(analysis_results: Dict[str, Any]) ->
     symbol = analysis_results.get('symbol', 'Unknown')
     local_drawdowns_list = analysis_results.get('local_drawdowns_list', [])
     duration_list = analysis_results.get('duration_list', [])
+    current_drawdown = analysis_results.get('current_drawdown', 0)
     
     if not local_drawdowns_list or not duration_list or len(local_drawdowns_list) != len(duration_list):
         st.warning("⚠️ Insufficient data for duration by magnitude analysis")
         return
     
-    st.subheader(f"⏱️ Drawdown Duration by Magnitude - {symbol}")
+    st.subheader(f"Drawdown Duration by Magnitude - {symbol}")
     
     # Convert to positive percentages
     drawdown_pct = [abs(dd) * 100 for dd in local_drawdowns_list]
+    current_dd_pct = abs(current_drawdown) * 100
     
     fig, ax = plt.subplots(figsize=(8, 6))
     try:
         # Create scatter plot
         scatter = ax.scatter(drawdown_pct, duration_list, alpha=0.7, color='skyblue', edgecolors='black', s=50)
         
+        # Add current drawdown marker if there is a current drawdown
+        if current_drawdown < -0.005:  # Only show if more than 0.5% drawdown
+            # For current drawdown, we need to estimate duration or use a default position
+            # Since we don't know the current duration, we'll place it at y=0 or use average duration
+            avg_duration = sum(duration_list) / len(duration_list) if duration_list else 0
+            ax.scatter(current_dd_pct, avg_duration, color='red', s=100, edgecolors='darkred', 
+                      linewidth=2, label=f'Current Drawdown: {current_drawdown:.2%}', zorder=5)
+        
         # Add trend line if we have enough data points
         if len(drawdown_pct) > 2:
             z = np.polyfit(drawdown_pct, duration_list, 1)
             p = np.poly1d(z)
             ax.plot(sorted(drawdown_pct), p(sorted(drawdown_pct)), "r--", alpha=0.8, linewidth=2, label='Trend Line')
+        
+        # Add legend if we have current drawdown or trend line
+        if current_drawdown < -0.005 or len(drawdown_pct) > 2:
             ax.legend()
         
         ax.set_title(f'Drawdown Duration vs Magnitude for {symbol}')

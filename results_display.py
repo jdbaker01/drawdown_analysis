@@ -19,7 +19,7 @@ def display_analysis_summary(analysis_results: Dict[str, Any]) -> None:
     symbol = analysis_results.get('symbol', 'Unknown')
     
     # Create header section
-    st.subheader(f"📊 Analysis Results for {symbol}")
+    st.subheader(f"Analysis Results for {symbol}")
     
     # Display analysis metadata
     col1, col2, col3 = st.columns(3)
@@ -59,7 +59,7 @@ def display_current_drawdown_status(analysis_results: Dict[str, Any]) -> None:
     max_drawdown = analysis_results.get('max_drawdown', 0)
     
     # Create prominent display for current drawdown status
-    st.subheader("🎯 Current Drawdown Status")
+    st.subheader("Current Drawdown Status")
     
     # Determine status color and message
     if current_drawdown == 0:
@@ -123,7 +123,7 @@ def display_key_metrics(analysis_results: Dict[str, Any]) -> None:
     Args:
         analysis_results: Dictionary containing analysis results
     """
-    st.subheader("📈 Key Metrics")
+    st.subheader("Key Metrics")
     
     # Core drawdown metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -508,7 +508,7 @@ def display_expandable_data_sections(analysis_results: Dict[str, Any]) -> None:
     Args:
         analysis_results: Dictionary containing analysis results
     """
-    st.subheader("🔍 Detailed Data Exploration")
+    st.subheader("Detailed Data Exploration")
     
     # Raw data series in expandable sections
     with st.expander("📈 Cumulative Return Series", expanded=False):
