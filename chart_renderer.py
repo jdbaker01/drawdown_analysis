@@ -465,15 +465,6 @@ def render_duration_by_magnitude_matplotlib(analysis_results: Dict[str, Any]) ->
             avg_duration = sum(duration_list) / len(duration_list) if duration_list else 0
             ax.scatter(current_dd_pct, avg_duration, color='red', s=100, edgecolors='darkred', 
                       linewidth=2, label=f'Current Drawdown: {current_drawdown:.2%}', zorder=5)
-        
-        # Add trend line if we have enough data points
-        if len(drawdown_pct) > 2:
-            z = np.polyfit(drawdown_pct, duration_list, 1)
-            p = np.poly1d(z)
-            ax.plot(sorted(drawdown_pct), p(sorted(drawdown_pct)), "r--", alpha=0.8, linewidth=2, label='Trend Line')
-        
-        # Add legend if we have current drawdown or trend line
-        if current_drawdown < -0.005 or len(drawdown_pct) > 2:
             ax.legend()
         
         ax.set_title(f'Drawdown Duration vs Magnitude for {symbol}')
